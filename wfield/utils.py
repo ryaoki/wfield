@@ -524,10 +524,10 @@ def runpar(f,X,nprocesses = None,**kwargs):
 
     '''
     if nprocesses is None:
-        nprocesses = cpu_count()
+        nprocesses = min(cpu_count(), 4) # limit to 4 cores
     with Pool(initializer = parinit, processes=nprocesses) as pool:
         res = pool.map(partial(f,**kwargs),X)
-    pool.join()
+#    pool.join()
     return res
 
 
