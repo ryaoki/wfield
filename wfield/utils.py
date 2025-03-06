@@ -23,7 +23,7 @@ except:
     print('Some functionality might be broken: install opencv-python or opencv-python-headless')
 import numpy as np
 from tqdm import tqdm
-from natsort import natsorted
+#from natsort import natsorted
 from glob import glob
 from os.path import join as pjoin
 from datetime import datetime
