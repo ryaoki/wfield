@@ -57,27 +57,47 @@ def hemodynamic_correction(U, SVT_470,SVT_405,
     npix = U.shape[0]
     idx = np.array_split(np.arange(0,npix),nchunks)
     # find the coefficients
-    if run_parallel:     # run in parallel
-        rcoeffs = runpar(_hemodynamic_find_coeffs,
-                         [U[ind,:] for ind in idx],
-                         SVTa=SVTa,
-                         SVTb=SVTb)
-        rcoeffs = np.hstack(rcoeffs).astype('float32')
-    else:                # run in series
-        rcoeffs = np.zeros((npix))
-        for i,ind in tqdm(enumerate(idx)):
-            # rcoeffs[ind] = _hemodynamic_find_coeffs(U[ind,:],SVTa,SVTb)
-            a = np.dot(U[ind,:],SVTa)
-            b = np.dot(U[ind,:],SVTb)
-            rcoeffs[ind] = np.sum(a*b,axis = 1)/np.sum(b*b,axis = 1)
-    # drop nan
-    rcoeffs[np.isnan(rcoeffs)] = 1.e-10
-    # find the transformation
-    T = np.dot(np.linalg.pinv(U),(U.T*rcoeffs).T)
-    # apply correction
-    SVTcorr = SVTa - np.dot(T,SVTb)
-    # return a zero mean SVT
-    SVTcorr = (SVTcorr.T - np.nanmean(SVTcorr,axis=1)).T.astype('float32')
+    regress_on_svt = False # added as True @ 250317 -> changed to False @ 250415
+
+    if regress_on_svt:
+        rcoeffs = np.zeros(U.shape[1])
+        for i in tqdm(range(U.shape[1])):
+            rcoeffs[i] = np.linalg.lstsq(SVTb[i].T.reshape(-1,1),
+                                          SVTa[i].T.reshape(-1,1), 
+                                          rcond=None)[0].squeeze()
+        # rcoeffs >=0
+        rcoeffs[rcoeffs<0] = 0
+
+        SVTcorr = SVTa - np.dot(rcoeffs.T,SVTb)
+        # return a zero mean SVT
+        SVTcorr = (SVTcorr.T - np.nanmean(SVTcorr,axis=1)).T.astype('float32')
+
+
+
+    else:# i.e. regress on pixels
+        if run_parallel:     # run in parallel
+            rcoeffs = runpar(_hemodynamic_find_coeffs,
+                            [U[ind,:] for ind in idx],
+                            SVTa=SVTa,
+                            SVTb=SVTb)
+            rcoeffs = np.hstack(rcoeffs).astype('float32')
+        else:                # run in series
+            rcoeffs = np.zeros((npix))
+            for i,ind in tqdm(enumerate(idx)):
+                # rcoeffs[ind] = _hemodynamic_find_coeffs(U[ind,:],SVTa,SVTb)
+                a = np.dot(U[ind,:],SVTa)
+                b = np.dot(U[ind,:],SVTb)
+                rcoeffs[ind] = np.sum(a*b,axis = 1)/np.sum(b*b,axis = 1)
+
+        # drop nan
+        rcoeffs[np.isnan(rcoeffs)] = 1.e-10
+        # find the transformation
+        T = np.dot(np.linalg.pinv(U),(U.T*rcoeffs).T)
+        # apply correction
+        SVTcorr = SVTa - np.dot(T,SVTb)
+        # return a zero mean SVT
+        SVTcorr = (SVTcorr.T - np.nanmean(SVTcorr,axis=1)).T.astype('float32')
+
     # put U dims back in case its used sequentially
     U = U.reshape(dims)
     

@@ -118,8 +118,14 @@ def _register_multichannel_stack(frames,templates,mode='2d',
     for ichan in range(nchannels):
         chunk = frames[:,ichan].squeeze()
         if mode == '2d':
-            res = runpar(registration_upsample, chunk,
-                         template = templates[ichan])
+            
+            # res = runpar(registration_upsample, chunk, # don't use runpar
+            #              template = templates[ichan])
+            res = []
+            for i in range(chunk.shape[0]):
+                res.append(registration_upsample(chunk[i],templates[ichan]))
+            #res = np.array(res)
+
             ys[:,ichan] = np.array([r[0][1] for r in res],dtype='float32')
             xs[:,ichan] = np.array([r[0][0] for r in res],dtype='float32')
 
