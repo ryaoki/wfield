@@ -57,7 +57,7 @@ def hemodynamic_correction(U, SVT_470,SVT_405,
     npix = U.shape[0]
     idx = np.array_split(np.arange(0,npix),nchunks)
     # find the coefficients
-    regress_on_svt = True # added @ 250317
+    regress_on_svt = False # added as True @ 250317 -> changed to False @ 250415
 
     if regress_on_svt:
         rcoeffs = np.zeros(U.shape[1])
